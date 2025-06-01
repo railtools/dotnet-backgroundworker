@@ -1,6 +1,9 @@
+using BackgroundWorker.Attributes;
+
 namespace BackgroundWorker.BackgroundJobs;
 
-public class Job1(ILogger<Job1> logger) : BackgroundService
+[BackgroundJob]
+public class BackgroundJob1(ILogger<BackgroundJob1> logger) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
