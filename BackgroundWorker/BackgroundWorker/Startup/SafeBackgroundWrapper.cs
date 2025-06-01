@@ -1,16 +1,30 @@
+using System.Reflection;
+using BackgroundWorker.Attributes;
+
 namespace BackgroundWorker.Startup;
 
-public class SafeWrapperBackgroundService<T>(T inner, ILogger<T> logger) : BackgroundService where T : BackgroundService
+public class SafeWrapperBackgroundService<T>(
+    T inner,
+    ILogger<T> logger
+) : BackgroundService where T : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        try
+        var attr = typeof(T).GetCustomAttribute<SafeBackgroundJobAttribute>();
+        var retryDelay = attr?.RetryDelay ?? TimeSpan.FromSeconds(5);
+
+        while (!stoppingToken.IsCancellationRequested)
         {
-            await inner.StartAsync(stoppingToken);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Unhandled exception in SafeBackgroundJob: {Job}", typeof(T).Name);
+            try
+            {
+                await inner.StartAsync(stoppingToken);
+                break; // If it completes normally, exit the loop
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "❌ Exception in SafeBackgroundJob: {JobType}. Retrying in {Delay}...", typeof(T).Name, retryDelay);
+                await Task.Delay(retryDelay, stoppingToken);
+            }
         }
     }
 }
