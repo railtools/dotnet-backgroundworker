@@ -1,5 +1,6 @@
 using System.Reflection;
 using BackgroundWorker.Attributes;
+using BackgroundWorker.Startup;
 using Quartz;
 
 // Logging
@@ -17,13 +18,26 @@ var backgroundJobTypes = Assembly.GetExecutingAssembly()
     .GetTypes()
     .Where(t =>
         typeof(BackgroundService).IsAssignableFrom(t) &&
-        t.GetCustomAttribute<BackgroundJobAttribute>() is not null &&
-        t is {IsAbstract: false, IsClass: true});
+        t is {IsAbstract: false, IsClass: true} &&
+        (t.GetCustomAttribute<BackgroundJobAttribute>() is not null ||
+         t.GetCustomAttribute<SafeBackgroundJobAttribute>() is not null));
 
 foreach (var jobType in backgroundJobTypes)
 {
-    builder.Services.AddSingleton(typeof(IHostedService), jobType);
-    logger.LogInformation("✅ Registered BackgroundService: {JobType}", jobType.Name);
+    var isSafe = jobType.GetCustomAttribute<SafeBackgroundJobAttribute>() is not null;
+
+    if (isSafe)
+    {
+        var wrapperType = typeof(SafeWrapperBackgroundService<>).MakeGenericType(jobType);
+        builder.Services.AddSingleton(typeof(IHostedService), wrapperType);
+        builder.Services.AddSingleton(jobType); // Also register original
+        logger.LogInformation("✅ Registered SafeBackgroundService: {JobType}", jobType.Name);
+    }
+    else
+    {
+        builder.Services.AddSingleton(typeof(IHostedService), jobType);
+        logger.LogInformation("✅ Registered BackgroundService: {JobType}", jobType.Name);
+    }
 }
 
 // Cron
