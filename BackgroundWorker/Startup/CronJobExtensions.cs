@@ -22,7 +22,7 @@ public static class CronJobExtensions
                 var attr = jobType.GetCustomAttribute<CronAttribute>()!;
                 var jobKey = new JobKey(jobType.Name);
 
-                q.AddJob(jobType, jobKey);
+                q.AddJob(jobType, job => job.WithIdentity(jobKey));
                 q.AddTrigger(opts => opts
                     .ForJob(jobKey)
                     .WithIdentity($"{jobKey.Name}-trigger")

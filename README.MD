@@ -1,6 +1,6 @@
 # 🧱 dotnet-background-jobs
 
-A clean, minimal .NET 9 worker service template with built-in support for:
+A clean, minimal .NET 10 worker service template with built-in support for:
 
 - ✅ Background services via `BackgroundService`
 - 🕒 Cron jobs via [Quartz.NET](https://www.quartz-scheduler.net/)
@@ -13,6 +13,7 @@ Add the `[BackgroundJob]` attribute and inherit `:BackgroundService`.
 Continiously runs in the background until stopped. 
 
 
+> ⚠️ Always `await` inside the loop (e.g. `Task.Delay`), otherwise it spins at 100% CPU.  
 > ⚠️ Exceptions here will just stop the service.  
 > Use `[SafeBackgroundJob]` instead for auto-retries (default 5s delay, configurable by `[SafeBackgroundJob(9000)]` 
 > = every 9s).
@@ -50,10 +51,10 @@ using Quartz;
 [Cron("0/30 * * * * ?")] // Every 30 seconds
 public class CronJob1(ILogger<CronJob1> logger) : IJob
 {
-    public Task Execute(IJobExecutionContext context)
+    public ValueTask Execute(IJobExecutionContext context, CancellationToken cancellationToken)
     {
         logger.LogInformation("🕒 CronJob1 executed at {Time}", DateTimeOffset.Now);
-        return Task.CompletedTask;
+        return ValueTask.CompletedTask;
     }
 }
 ```

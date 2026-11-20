@@ -18,7 +18,16 @@ public class SafeWrapperBackgroundService<T>(
             try
             {
                 await inner.StartAsync(stoppingToken);
+                // StartAsync returns as soon as the job is running; failures surface on ExecuteTask.
+                if (inner.ExecuteTask is { } executeTask)
+                {
+                    await executeTask;
+                }
                 break; // If it completes normally, exit the loop
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                break;
             }
             catch (Exception ex)
             {
